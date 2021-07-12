@@ -9,31 +9,57 @@ case class Cont[A](call: () => A) extends Control[A]
 case class ContClean[A](call: () => Control[A]) extends Control[A]
 
 object tailcallpp {
-  val max = 300;
-  var count = 0;
+  val max = 2000
+  var count = 0
 
-  def tailcallpp[A](f: => A): Control[A] = {
+  def tailcallpp[A](f: => Control[A]): Control[A] = {
     if (count < max) {
       count += 1
-      println("count", count)
-      Done(f)
+      f
     } else {
-      println("cleaning", Runtime.getRuntime.freeMemory)
       count=0
-      Cont[A](() => f)
+      ContClean(() => f)
     }
   }
 
-//  def tailcallpp[A](f: => A): A = {
-//    print("test")
-//    if (count < max) {
-//      count += 1
-//      println("count", count)
-//      f
-//    } else {
-//      println("cleaning", Runtime.getRuntime.freeMemory)
-//      count=0
-//      f
-//    }
-//  }
+  @tailrec
+  def run[A](f: => Control[A]): A = {
+    f match {
+      case Done(res) =>
+        res
+      case ContClean(call) =>
+        run(call.apply())
+    }
+  }
+}
+
+object htailcallpp {
+  var count = 0
+
+  def htailcallpp[A](f: => Control[A]): Control[A] = {
+    count += 1
+    val rt = Runtime.getRuntime
+    val freemem = rt.freeMemory
+    val totalmem = rt.totalMemory
+    val sizeperframe = totalmem/count
+//    println("Free Memory", freemem)
+//    println("Size per frame", sizeperframe)
+//    println("Size per frame * count", sizeperframe*max)
+    if(sizeperframe < freemem){
+      f
+    } else {
+      count=0
+      ContClean(() => f)
+    }
+  }
+
+  @tailrec
+  def hrun[A](f: => Control[A]): A = {
+    f match {
+      case Done(res) =>
+        res
+      case ContClean(call) =>
+        hrun(call.apply())
+    }
+  }
 }
