@@ -76,6 +76,16 @@ object TailCallspp {
     }
   }
 
+  def tailcallpp[A](rest: => TailRec[A], m: Int): TailRec[A] = {
+    if(counter<m) {
+      counter+=1
+      rest
+    } else {
+      counter = 0
+      Call(() => rest)
+    }
+  }
+
   /** Used to return final result from tailcalling computation
    *  @param  `result` the result value
    *  @return a `TailRec` object representing a computation which immediately
